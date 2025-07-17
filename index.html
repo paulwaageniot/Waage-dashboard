@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>IoT-Waage Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: sans-serif; padding: 2rem; }
+    canvas { max-width: 800px; }
+  </style>
+</head>
+<body>
+  <h1>📊 IoT-Waage Dashboard</h1>
+  <canvas id="gewichtChart"></canvas>
+  <script>
+    const apiUrl = 'https://waage-api.onrender.com/data'; // Deine echte API-URL!
+
+    async function fetchData() {
+      const res = await fetch(apiUrl);
+      const daten = await res.json();
+      return daten.map(entry => ({
+        x: new Date(entry.timestamp),
+        y: entry.gewicht
+      }));
+    }
+
+    async function renderChart() {
+      const ctx = document.getElementById('gewichtChart').getContext('2d');
+      const gewichtsdaten = await fetchData();
+
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          datasets: [{
+            label: 'Gewicht (t)',
+            data: gewichtsdaten,
+            borderColor: 'blue',
+            tension: 0.2
+          }]
+        },
+        options: {
+          scales: {
+            x: { type: 'time', time: { unit: 'minute' }, title: { text: 'Zeit', display: true } },
+            y: { title: { text: 'Gewicht (t)', display: true } }
+          }
+        }
+      });
+    }
+
+    renderChart();
+  </script>
+</body>
+</html>
