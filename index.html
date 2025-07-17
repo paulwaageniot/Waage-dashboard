@@ -39,7 +39,7 @@
 </head>
 <body>
   <header>
-    <img src="mts_logo.png" id="logo" alt="MTS Logo" />
+    <img src="mts-logo.png" id="logo" alt="MTS Logo" />
     <h1>IoT Waagen Dashboard</h1>
   </header>
 
@@ -59,9 +59,10 @@
   <div class="chart-container"><canvas id="totalChart"></canvas></div>
   <div class="chart-container"><canvas id="runningChart"></canvas></div>
   <div class="chart-container"><canvas id="korrekturChart"></canvas></div>
+  <div class="chart-container"><canvas id="foerderChart"></canvas></div>
 
   <script>
-    const apiUrl = "https://waage-api.onrender.com/data"; // Anpassen, falls nötig
+    const apiUrl = "https://waage-api.onrender.com/data";
     let rawData = [];
 
     async function fetchData() {
@@ -74,6 +75,13 @@
       return data.map(e => ({
         x: new Date(e.timestamp),
         y: e[field]
+      }));
+    }
+
+    function parseFoerderleistung(data) {
+      return data.map(e => ({
+        x: new Date(e.timestamp),
+        y: (e.bandgeschwindigkeit * e.korrekturfaktor * e.gewicht * 3.6 / 1000).toFixed(2)
       }));
     }
 
@@ -93,6 +101,7 @@
       updateChart(totalChart, parseData(filteredData, "total_weight"));
       updateChart(runningChart, parseData(filteredData, "running_total"));
       updateChart(korrekturChart, parseData(filteredData, "korrekturfaktor"));
+      updateChart(foerderChart, parseFoerderleistung(filteredData));
     }
 
     function updateChart(chart, data) {
@@ -128,7 +137,14 @@
           scales: {
             x: {
               type: "time",
-              time: { unit: "minute", tooltipFormat: "dd.MM HH:mm" },
+              time: {
+                unit: "minute",
+                tooltipFormat: "HH:mm",
+                displayFormats: {
+                  minute: "HH:mm",
+                  hour: "HH:mm"
+                }
+              },
               title: { display: true, text: "Zeit" }
             },
             y: {
@@ -141,7 +157,7 @@
     }
 
     function resetZoom() {
-      [gewichtChart, bandChart, totalChart, runningChart, korrekturChart].forEach(chart => chart.resetZoom());
+      [gewichtChart, bandChart, totalChart, runningChart, korrekturChart, foerderChart].forEach(chart => chart.resetZoom());
     }
 
     const gewichtChart = createChart("gewichtChart", "Gewicht (kg)", "#0074D9");
@@ -149,11 +165,12 @@
     const totalChart = createChart("totalChart", "Total Weight (t)", "#FF851B");
     const runningChart = createChart("runningChart", "Running Total (t)", "#B10DC9");
     const korrekturChart = createChart("korrekturChart", "Korrekturfaktor", "#FF4136");
+    const foerderChart = createChart("foerderChart", "Förderleistung (t/h)", "#111111");
 
     document.getElementById("range").addEventListener("change", updateCharts);
 
     fetchData();
-    setInterval(fetchData, 60000); // jede Minute neu laden
+    setInterval(fetchData, 60000); // Jede Minute neu laden
   </script>
 </body>
 </html>
