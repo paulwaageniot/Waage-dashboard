@@ -39,13 +39,14 @@
 </head>
 <body>
   <header>
-    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/MTS_Logo.svg/512px-MTS_Logo.svg.png" id="logo" alt="MTS Logo" />
+    <img src="https://raw.githubusercontent.com/paulwaageniot/waage-dashboard/main/assets/mts_logo.png" id="logo" alt="MTS Logo" />
     <h1>IoT Waagen Dashboard</h1>
   </header>
 
   <div class="filter">
     <label for="range">Zeitraum:</label>
     <select id="range">
+      <option value="hour">Letzte Stunde</option>
       <option value="1">Letzter Tag</option>
       <option value="7">Letzte Woche</option>
       <option value="30">Letzter Monat</option>
@@ -59,14 +60,24 @@
   <div class="chart-container"><canvas id="totalChart"></canvas></div>
   <div class="chart-container"><canvas id="runningChart"></canvas></div>
   <div class="chart-container"><canvas id="korrekturChart"></canvas></div>
+  <div class="chart-container"><canvas id="leistungChart"></canvas></div>
 
   <script>
-    const apiUrl = "https://waage-api.onrender.com/data"; // ggf. anpassen
+    const apiUrl = "https://waage-api.onrender.com/data"; // anpassen falls nötig
     let rawData = [];
 
     async function fetchData() {
       const res = await fetch(apiUrl);
       rawData = await res.json();
+
+      // Gewicht in kg umrechnen + Förderleistung berechnen
+      rawData.forEach(e => {
+        e.gewicht = e.gewicht ? +(e.gewicht * 1000).toFixed(2) : null;
+        e.foerderleistung = (e.gewicht && e.bandgeschwindigkeit) 
+          ? +((e.gewicht / 1000) * e.bandgeschwindigkeit / 3.6).toFixed(2) 
+          : null;
+      });
+
       updateCharts();
     }
 
@@ -81,7 +92,10 @@
       const range = document.getElementById("range").value;
       let filteredData = rawData;
 
-      if (range !== "all") {
+      if (range === "hour") {
+        const cutoff = new Date(Date.now() - 60 * 60 * 1000);
+        filteredData = rawData.filter(e => new Date(e.timestamp) >= cutoff);
+      } else if (range !== "all") {
         const days = parseInt(range);
         const cutoff = new Date();
         cutoff.setDate(cutoff.getDate() - days);
@@ -93,6 +107,7 @@
       updateChart(totalChart, parseData(filteredData, "total_weight"));
       updateChart(runningChart, parseData(filteredData, "running_total"));
       updateChart(korrekturChart, parseData(filteredData, "korrekturfaktor"));
+      updateChart(leistungChart, parseData(filteredData, "foerderleistung"));
     }
 
     function updateChart(chart, data) {
@@ -128,7 +143,7 @@
           scales: {
             x: {
               type: "time",
-              time: { unit: "minute", tooltipFormat: "dd.MM HH:mm" },
+              time: { unit: "minute", tooltipFormat: "dd.MM.yyyy HH:mm" },
               title: { display: true, text: "Zeit" }
             },
             y: {
@@ -141,19 +156,20 @@
     }
 
     function resetZoom() {
-      [gewichtChart, bandChart, totalChart, runningChart, korrekturChart].forEach(chart => chart.resetZoom());
+      [gewichtChart, bandChart, totalChart, runningChart, korrekturChart, leistungChart].forEach(chart => chart.resetZoom());
     }
 
-    const gewichtChart = createChart("gewichtChart", "Gewicht (t)", "#0074D9");
+    const gewichtChart = createChart("gewichtChart", "Gewicht (kg)", "#0074D9");
     const bandChart = createChart("bandChart", "Bandgeschwindigkeit (m/s)", "#2ECC40");
     const totalChart = createChart("totalChart", "Total Weight (t)", "#FF851B");
     const runningChart = createChart("runningChart", "Running Total (t)", "#B10DC9");
     const korrekturChart = createChart("korrekturChart", "Korrekturfaktor", "#FF4136");
+    const leistungChart = createChart("leistungChart", "Förderleistung (t/h)", "#17A2B8");
 
     document.getElementById("range").addEventListener("change", updateCharts);
 
     fetchData();
-    setInterval(fetchData, 60000); // jede Minute neu laden
+    setInterval(fetchData, 60000); // alle 60 Sekunden neu laden
   </script>
 </body>
 </html>
