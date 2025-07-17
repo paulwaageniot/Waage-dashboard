@@ -81,7 +81,7 @@
 function parseFoerderleistung(data) {
   return data.map(e => ({
     x: new Date(e.timestamp),
-    y: (e.gewicht * e.bandgeschwindigkeit * e.korrekturfaktor * 3.6 / 1000).toFixed(2)
+    y: (e.gewicht * e.bandgeschwindigkeit * e.korrekturfaktor * 3.6).toFixed(2)
   }));
 }
 
