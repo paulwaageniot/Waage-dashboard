@@ -1,41 +1,159 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>IoT Waagen Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      margin: 0;
+    }
+    header {
+      background: #003366;
+      color: white;
+      padding: 10px;
+      text-align: center;
+    }
+    .chart-container {
+      background: white;
+      border-radius: 10px;
+      margin: 20px auto;
+      padding: 20px;
+      max-width: 1000px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    .filter {
+      text-align: center;
+      margin: 10px;
+    }
+    #logo {
+      height: 50px;
+      vertical-align: middle;
+      margin-right: 10px;
+    }
+  </style>
 </head>
 <body>
-  <h1>IoT Waagen Dashboard</h1>
-  <div id="daten"></div>
+  <header>
+    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/MTS_Logo.svg/512px-MTS_Logo.svg.png" id="logo" alt="MTS Logo" />
+    <h1>IoT Waagen Dashboard</h1>
+  </header>
+
+  <div class="filter">
+    <label for="range">Zeitraum:</label>
+    <select id="range">
+      <option value="1">Letzter Tag</option>
+      <option value="7">Letzte Woche</option>
+      <option value="30">Letzter Monat</option>
+      <option value="all">Alle</option>
+    </select>
+    <button onclick="resetZoom()">Zoom zurücksetzen</button>
+  </div>
+
+  <div class="chart-container"><canvas id="gewichtChart"></canvas></div>
+  <div class="chart-container"><canvas id="bandChart"></canvas></div>
+  <div class="chart-container"><canvas id="totalChart"></canvas></div>
+  <div class="chart-container"><canvas id="runningChart"></canvas></div>
+  <div class="chart-container"><canvas id="korrekturChart"></canvas></div>
 
   <script>
-    async function ladeDaten() {
-      try {
-        const response = await fetch("https://waage-api.onrender.com/data"); // <-- URL ggf. anpassen
-        const daten = await response.json();
+    const apiUrl = "https://waage-api.onrender.com/data"; // ggf. anpassen
+    let rawData = [];
 
-        const container = document.getElementById("daten");
-        container.innerHTML = ""; // vorherige Inhalte löschen
-
-        if (daten.length === 0) {
-          container.innerHTML = "<p>⚠️ Noch keine Messdaten verfügbar.</p>";
-        } else {
-          daten.forEach(eintrag => {
-            const zeile = document.createElement("p");
-            zeile.textContent =
-              `🕒 ${eintrag.timestamp} | Gewicht: ${eintrag.gewicht} t | Band: ${eintrag.bandgeschwindigkeit} m/s`;
-            container.appendChild(zeile);
-          });
-        }
-      } catch (err) {
-        console.error("Fehler beim Laden der Daten:", err);
-        document.getElementById("daten").innerHTML = "<p>❌ Fehler beim Laden der Daten.</p>";
-      }
+    async function fetchData() {
+      const res = await fetch(apiUrl);
+      rawData = await res.json();
+      updateCharts();
     }
 
-    // Alle 60 Sekunden neu laden
-    ladeDaten();
-    setInterval(ladeDaten, 60000);
+    function parseData(data, field) {
+      return data.map(e => ({
+        x: new Date(e.timestamp),
+        y: e[field]
+      }));
+    }
+
+    function updateCharts() {
+      const range = document.getElementById("range").value;
+      let filteredData = rawData;
+
+      if (range !== "all") {
+        const days = parseInt(range);
+        const cutoff = new Date();
+        cutoff.setDate(cutoff.getDate() - days);
+        filteredData = rawData.filter(e => new Date(e.timestamp) >= cutoff);
+      }
+
+      updateChart(gewichtChart, parseData(filteredData, "gewicht"));
+      updateChart(bandChart, parseData(filteredData, "bandgeschwindigkeit"));
+      updateChart(totalChart, parseData(filteredData, "total_weight"));
+      updateChart(runningChart, parseData(filteredData, "running_total"));
+      updateChart(korrekturChart, parseData(filteredData, "korrekturfaktor"));
+    }
+
+    function updateChart(chart, data) {
+      chart.data.datasets[0].data = data;
+      chart.update();
+    }
+
+    function createChart(canvasId, label, color) {
+      const ctx = document.getElementById(canvasId).getContext("2d");
+      return new Chart(ctx, {
+        type: "line",
+        data: {
+          datasets: [{
+            label: label,
+            borderColor: color,
+            borderWidth: 2,
+            fill: false,
+            data: []
+          }]
+        },
+        options: {
+          responsive: true,
+          interaction: {
+            mode: 'index',
+            intersect: false,
+          },
+          plugins: {
+            zoom: {
+              pan: { enabled: true, mode: 'x' },
+              zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' }
+            }
+          },
+          scales: {
+            x: {
+              type: "time",
+              time: { unit: "minute", tooltipFormat: "dd.MM HH:mm" },
+              title: { display: true, text: "Zeit" }
+            },
+            y: {
+              beginAtZero: false,
+              title: { display: true, text: label }
+            }
+          }
+        }
+      });
+    }
+
+    function resetZoom() {
+      [gewichtChart, bandChart, totalChart, runningChart, korrekturChart].forEach(chart => chart.resetZoom());
+    }
+
+    const gewichtChart = createChart("gewichtChart", "Gewicht (t)", "#0074D9");
+    const bandChart = createChart("bandChart", "Bandgeschwindigkeit (m/s)", "#2ECC40");
+    const totalChart = createChart("totalChart", "Total Weight (t)", "#FF851B");
+    const runningChart = createChart("runningChart", "Running Total (t)", "#B10DC9");
+    const korrekturChart = createChart("korrekturChart", "Korrekturfaktor", "#FF4136");
+
+    document.getElementById("range").addEventListener("change", updateCharts);
+
+    fetchData();
+    setInterval(fetchData, 60000); // jede Minute neu laden
   </script>
 </body>
 </html>
