@@ -39,7 +39,7 @@
 </head>
 <body>
   <header>
-    <img src="mts-logo.png" id="logo" alt="MTS Logo" />
+    <img src="mts_logo.png" id="logo" alt="MTS Logo" />
     <h1>IoT Waagen Dashboard</h1>
   </header>
 
@@ -78,12 +78,12 @@
       }));
     }
 
-    function parseFoerderleistung(data) {
-      return data.map(e => ({
-        x: new Date(e.timestamp),
-        y: (e.bandgeschwindigkeit * e.korrekturfaktor * e.gewicht * 3.6 / 1000).toFixed(2)
-      }));
-    }
+function parseFoerderleistung(data) {
+  return data.map(e => ({
+    x: new Date(e.timestamp),
+    y: (e.gewicht * e.bandgeschwindigkeit * e.korrekturfaktor * 3.6 / 1000).toFixed(2)
+  }));
+}
 
     function updateCharts() {
       const range = document.getElementById("range").value;
