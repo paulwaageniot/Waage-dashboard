@@ -1,54 +1,41 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>IoT-Waage Dashboard</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <style>
-    body { font-family: sans-serif; padding: 2rem; }
-    canvas { max-width: 800px; }
-  </style>
+  <meta charset="UTF-8">
+  <title>IoT Waagen Dashboard</title>
 </head>
 <body>
-  <h1>📊 IoT-Waage Dashboard</h1>
-  <canvas id="gewichtChart"></canvas>
+  <h1>IoT Waagen Dashboard</h1>
+  <div id="daten"></div>
+
   <script>
-    const apiUrl = 'https://waage-api.onrender.com/data'; // Deine echte API-URL!
+    async function ladeDaten() {
+      try {
+        const response = await fetch("https://waage-api.onrender.com/data"); // <-- URL ggf. anpassen
+        const daten = await response.json();
 
-    async function fetchData() {
-      const res = await fetch(apiUrl);
-      const daten = await res.json();
-      return daten.map(entry => ({
-        x: new Date(entry.timestamp),
-        y: entry.gewicht
-      }));
-    }
+        const container = document.getElementById("daten");
+        container.innerHTML = ""; // vorherige Inhalte löschen
 
-    async function renderChart() {
-      const ctx = document.getElementById('gewichtChart').getContext('2d');
-      const gewichtsdaten = await fetchData();
-
-      new Chart(ctx, {
-        type: 'line',
-        data: {
-          datasets: [{
-            label: 'Gewicht (t)',
-            data: gewichtsdaten,
-            borderColor: 'blue',
-            tension: 0.2
-          }]
-        },
-        options: {
-          scales: {
-            x: { type: 'time', time: { unit: 'minute' }, title: { text: 'Zeit', display: true } },
-            y: { title: { text: 'Gewicht (t)', display: true } }
-          }
+        if (daten.length === 0) {
+          container.innerHTML = "<p>⚠️ Noch keine Messdaten verfügbar.</p>";
+        } else {
+          daten.forEach(eintrag => {
+            const zeile = document.createElement("p");
+            zeile.textContent =
+              `🕒 ${eintrag.timestamp} | Gewicht: ${eintrag.gewicht} t | Band: ${eintrag.bandgeschwindigkeit} m/s`;
+            container.appendChild(zeile);
+          });
         }
-      });
+      } catch (err) {
+        console.error("Fehler beim Laden der Daten:", err);
+        document.getElementById("daten").innerHTML = "<p>❌ Fehler beim Laden der Daten.</p>";
+      }
     }
 
-    renderChart();
+    // Alle 60 Sekunden neu laden
+    ladeDaten();
+    setInterval(ladeDaten, 60000);
   </script>
 </body>
 </html>
