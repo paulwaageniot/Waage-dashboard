@@ -97,41 +97,25 @@
         };
       });
     }
-function updateCharts() {
-  const range = document.getElementById("range").value;
-  let filteredData = rawData;
+    function updateCharts() {
+      const range = document.getElementById("range").value;
+      let filteredData = rawData;
 
-  if (range !== "all") {
-    const days = parseInt(range);
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - days);
-    filteredData = rawData.filter(e => new Date(e.timestamp.replace(" ", "T")) >= cutoff);
-  }
+      if (range !== "all") {
+        const days = parseInt(range);
+        const cutoff = new Date();
+        cutoff.setDate(cutoff.getDate() - days);
+        filteredData = rawData.filter(e => new Date(e.timestamp.replace(" ", "T")) >= cutoff);
+      }
 
-  updateChart(gewichtChart, parseData(filteredData, "gewicht"));
-  updateChart(bandChart, parseData(filteredData, "bandgeschwindigkeit"));
-  updateChart(totalChart, parseData(filteredData, "total_weight"));
-  updateChart(runningChart, parseData(filteredData, "running_total"));
-  updateChart(korrekturChart, parseData(filteredData, "korrekturfaktor"));
-  updateChart(leistungChart, parseLeistung(filteredData));
+      updateChart(gewichtChart, parseData(filteredData, "gewicht"));
+      updateChart(bandChart, parseData(filteredData, "bandgeschwindigkeit"));
+      updateChart(totalChart, parseData(filteredData, "total_weight"));
+      updateChart(runningChart, parseData(filteredData, "running_total"));
+      updateChart(korrekturChart, parseData(filteredData, "korrekturfaktor"));
+      updateChart(leistungChart, parseLeistung(filteredData));
+    }
 
-  // Differenzberechnung für Zählerwerte:
-  const first = filteredData[0];
-  const last = filteredData[filteredData.length - 1];
-
-  if (first && last) {
-    const diffTotal = (last.total_weight || 0) - (first.total_weight || 0);
-    const diffRunning = (last.running_total || 0) - (first.running_total || 0);
-
-    document.getElementById("totalSum").innerText = `Differenz: ${diffTotal.toFixed(2)} t`;
-    document.getElementById("runningSum").innerText = `Differenz: ${diffRunning.toFixed(2)} t`;
-  } else {
-    document.getElementById("totalSum").innerText = "Keine Daten";
-    document.getElementById("runningSum").innerText = "Keine Daten";
-  }
-}
-
-}
 
     function updateChart(chart, data) {
       chart.data.datasets[0].data = data;
