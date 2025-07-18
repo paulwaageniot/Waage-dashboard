@@ -36,73 +36,64 @@
       vertical-align: middle;
       margin-right: 10px;
     }
-    #login {
-      text-align: center;
-      margin-top: 150px;
-    }
-    #login input {
-      padding: 8px;
-      margin: 5px;
-      width: 200px;
-    }
-    #login button {
-      padding: 10px 20px;
-      font-size: 16px;
-    }
   </style>
 </head>
 <body>
+  <header>
+    <img src="mts_Logo.png" id="logo" alt="MTS Logo" />
+    <h1>IoT Waagen Dashboard</h1>
+  </header>
 
-  <!-- 🔐 LOGIN -->
-  <div id="login">
-    <h2>Zugriff nur für berechtigte Benutzer</h2>
-    <input type="text" id="username" placeholder="Benutzername" /><br>
-    <input type="password" id="password" placeholder="Passwort" /><br>
-    <button onclick="authenticate()">Login</button>
-    <p id="error" style="color:red;"></p>
+  <div class="filter">
+    <label for="range">Zeitraum:</label>
+    <select id="range">
+      <option value="1">Letzter Tag</option>
+      <option value="7">Letzte Woche</option>
+      <option value="30">Letzter Monat</option>
+      <option value="all">Alle</option>
+    </select>
+    <button onclick="resetZoom()">Zoom zurücksetzen</button>
   </div>
 
-  <!-- 📊 DASHBOARD -->
-  <div id="dashboard" style="display:none;">
-    <header>
-      <img src="mts_logo.png" id="logo" alt="MTS Logo" />
-      <h1>IoT Waagen Dashboard</h1>
-    </header>
-
-    <div class="filter">
-      <label for="range">Zeitraum:</label>
-      <select id="range">
-        <option value="1">Letzter Tag</option>
-        <option value="7">Letzte Woche</option>
-        <option value="30">Letzter Monat</option>
-        <option value="all">Alle</option>
-      </select>
-      <button onclick="resetZoom()">Zoom zurücksetzen</button>
-    </div>
-
-    <div class="chart-container"><canvas id="gewichtChart"></canvas></div>
-    <div class="chart-container"><canvas id="bandChart"></canvas></div>
-    <div class="chart-container"><canvas id="totalChart"></canvas></div>
-    <div class="chart-container"><canvas id="runningChart"></canvas></div>
-    <div class="chart-container"><canvas id="korrekturChart"></canvas></div>
-    <div class="chart-container"><canvas id="leistungChart"></canvas></div>
-  </div>
+  <div class="chart-container"><canvas id="gewichtChart"></canvas></div>
+  <div class="chart-container"><canvas id="bandChart"></canvas></div>
+  <div class="chart-container"><canvas id="totalChart"></canvas></div>
+  <div class="chart-container"><canvas id="runningChart"></canvas></div>
+  <div class="chart-container"><canvas id="korrekturChart"></canvas></div>
+  <div class="chart-container"><canvas id="leistungChart"></canvas></div>
 
   <script>
     const apiUrl = "https://waage-api.onrender.com/data";
     let rawData = [];
 
     async function fetchData() {
-      const res = await fetch(apiUrl);
-      rawData = await res.json();
-      updateCharts();
+      try {
+        const res = await fetch(apiUrl);
+        rawData = await res.json();
+        updateCharts();
+      } catch (e) {
+        console.error("Daten konnten nicht geladen werden", e);
+      }
     }
 
     function parseData(data, field) {
       return data.map(e => ({
-        x: new Date(e.timestamp),
+        x: new Date(e.timestamp.replace(" ", "T")),  // Robust gegen Leerzeichen
         y: e[field]
       }));
+    }
+
+    function parseLeistung(data) {
+      return data.map(e => {
+        const gewicht = parseFloat(e.gewicht || 0);
+        const band = parseFloat(e.bandgeschwindigkeit || 0);
+        const korrektur = parseFloat(e.korrekturfaktor || 1);
+        const leistung = gewicht * band * korrektur * 3.6;
+        return {
+          x: new Date(e.timestamp.replace(" ", "T")),
+          y: parseFloat(leistung.toFixed(2))
+        };
+      });
     }
 
     function updateCharts() {
@@ -113,7 +104,7 @@
         const days = parseInt(range);
         const cutoff = new Date();
         cutoff.setDate(cutoff.getDate() - days);
-        filteredData = rawData.filter(e => new Date(e.timestamp) >= cutoff);
+        filteredData = rawData.filter(e => new Date(e.timestamp.replace(" ", "T")) >= cutoff);
       }
 
       updateChart(gewichtChart, parseData(filteredData, "gewicht"));
@@ -121,13 +112,7 @@
       updateChart(totalChart, parseData(filteredData, "total_weight"));
       updateChart(runningChart, parseData(filteredData, "running_total"));
       updateChart(korrekturChart, parseData(filteredData, "korrekturfaktor"));
-
-      // Förderleistung berechnen: leistung = gewicht * bandgeschwindigkeit * korrekturfaktor * 3.6 / 1000 (t/h)
-      const leistungData = filteredData.map(e => ({
-        x: new Date(e.timestamp),
-        y: ((e.gewicht || 0) * (e.bandgeschwindigkeit || 0) * (e.korrekturfaktor || 1) * 3.6)
-      }));
-      updateChart(leistungChart, leistungData);
+      updateChart(leistungChart, parseLeistung(filteredData));
     }
 
     function updateChart(chart, data) {
@@ -168,11 +153,6 @@
                 tooltipFormat: "HH:mm",
                 displayFormats: { minute: "HH:mm", hour: "HH:mm" }
               },
-              adapters: {
-                date: {
-                  locale: window.dateFns.locale.de
-                }
-              },
               title: { display: true, text: "Zeit" }
             },
             y: {
@@ -188,33 +168,17 @@
       [gewichtChart, bandChart, totalChart, runningChart, korrekturChart, leistungChart].forEach(chart => chart.resetZoom());
     }
 
-    // 📊 Charts initialisieren
     const gewichtChart = createChart("gewichtChart", "Gewicht (kg)", "#0074D9");
     const bandChart = createChart("bandChart", "Bandgeschwindigkeit (m/s)", "#2ECC40");
-    const totalChart = createChart("totalChart", "Total Weight (kg)", "#FF851B");
-    const runningChart = createChart("runningChart", "Running Total (kg)", "#B10DC9");
+    const totalChart = createChart("totalChart", "Totalgewicht (kg)", "#FF851B");
+    const runningChart = createChart("runningChart", "Laufendes Total (kg)", "#B10DC9");
     const korrekturChart = createChart("korrekturChart", "Korrekturfaktor", "#FF4136");
     const leistungChart = createChart("leistungChart", "Förderleistung (t/h)", "#111111");
 
     document.getElementById("range").addEventListener("change", updateCharts);
 
-    // 🔐 Authentifizierung
-    function authenticate() {
-      const user = document.getElementById("username").value;
-      const pass = document.getElementById("password").value;
-
-      const allowedUser = "admin";
-      const allowedPass = "Start123";
-
-      if (user === allowedUser && pass === allowedPass) {
-        document.getElementById("login").style.display = "none";
-        document.getElementById("dashboard").style.display = "block";
-        fetchData();
-        setInterval(fetchData, 60000);
-      } else {
-        document.getElementById("error").innerText = "❌ Falscher Benutzername oder Passwort.";
-      }
-    }
+    fetchData();
+    setInterval(fetchData, 60000);
   </script>
 </body>
 </html>
