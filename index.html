@@ -6,7 +6,6 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1"></script>
-  <script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.3/locale/de/index.js"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -40,7 +39,7 @@
 </head>
 <body>
   <header>
-    <img src="mts_Logo.png" id="logo" alt="MTS Logo" />
+    <img src="mts_logo.png" id="logo" alt="MTS Logo" />
     <h1>IoT Waagen Dashboard</h1>
   </header>
 
@@ -67,18 +66,14 @@
     let rawData = [];
 
     async function fetchData() {
-      try {
-        const res = await fetch(apiUrl);
-        rawData = await res.json();
-        updateCharts();
-      } catch (e) {
-        console.error("Daten konnten nicht geladen werden", e);
-      }
+      const res = await fetch(apiUrl);
+      rawData = await res.json();
+      updateCharts();
     }
 
     function parseData(data, field) {
       return data.map(e => ({
-        x: new Date(e.timestamp.replace(" ", "T")),  // Robust gegen Leerzeichen
+        x: new Date(e.timestamp.replace(" ", "T")),
         y: e[field]
       }));
     }
@@ -178,7 +173,7 @@
     document.getElementById("range").addEventListener("change", updateCharts);
 
     fetchData();
-    setInterval(fetchData, 60000);
+    setInterval(fetchData, 60000); // alle 60 Sekunden neu
   </script>
 </body>
 </html>
