@@ -222,7 +222,7 @@
       const doc = new jsPDF();
 
       doc.setFontSize(14);
-      doc.text("IoT Waagen PDF Report", 10, 10);
+      doc.text("Waagen PDF Report", 10, 10);
       doc.setFontSize(10);
       doc.text(`Zeitraum: ${days === "all" ? "Alle Daten" : `Letzte ${days} Tage`}`, 10, 18);
       doc.text(`Erstellt am: ${new Date().toLocaleString("de-DE")}`, 10, 24);
@@ -259,7 +259,7 @@
         const imgData = await html2canvas(canvas).then(canvasEl => canvasEl.toDataURL("image/png"));
         doc.addPage();
         doc.setFontSize(12);
-        doc.text(id.replace("Chart", ""), 10, 15);
+        doc.text(("Chart", ""), 10, 15);
         doc.addImage(imgData, "PNG", 10, 20, 180, 90); // passt automatisch auf Seite
       }
 
