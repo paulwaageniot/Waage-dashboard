@@ -35,6 +35,13 @@
       vertical-align: middle;
       margin-right: 10px;
     }
+    .sum-display {
+      text-align: center;
+      font-size: 16px;
+      margin-top: 10px;
+      color: #333;
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
@@ -56,15 +63,17 @@
 
   <div class="chart-container"><canvas id="gewichtChart"></canvas></div>
   <div class="chart-container"><canvas id="bandChart"></canvas></div>
-<div class="chart-container">
-  <canvas id="totalChart"></canvas>
-  <div id="totalSum" style="text-align:center; margin-top:10px; font-weight:bold;"></div>
-</div>
 
-<div class="chart-container">
-  <canvas id="runningChart"></canvas>
-  <div id="runningSum" style="text-align:center; margin-top:10px; font-weight:bold;"></div>
-</div>
+  <div class="chart-container">
+    <canvas id="totalChart"></canvas>
+    <div id="totalSum" class="sum-display"></div>
+  </div>
+
+  <div class="chart-container">
+    <canvas id="runningChart"></canvas>
+    <div id="runningSum" class="sum-display"></div>
+  </div>
+
   <div class="chart-container"><canvas id="korrekturChart"></canvas></div>
   <div class="chart-container"><canvas id="leistungChart"></canvas></div>
 
@@ -81,7 +90,7 @@
     function parseData(data, field) {
       return data.map(e => ({
         x: new Date(e.timestamp.replace(" ", "T")),
-        y: e[field]
+        y: parseFloat(e[field] || 0)
       }));
     }
 
@@ -98,30 +107,37 @@
       });
     }
 
-function updateCharts() {
-  const range = document.getElementById("range").value;
-  let filteredData = rawData;
+    function calculateDifference(data, field) {
+      if (data.length < 2) return 0;
+      const first = parseFloat(data[0][field]) || 0;
+      const last = parseFloat(data[data.length - 1][field]) || 0;
+      return last - first;
+    }
 
-  if (range !== "all") {
-    const days = parseInt(range);
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - days);
-    filteredData = rawData.filter(e => new Date(e.timestamp.replace(" ", "T")) >= cutoff);
-  }
+    function updateCharts() {
+      const range = document.getElementById("range").value;
+      let filteredData = rawData;
 
-  updateChart(gewichtChart, parseData(filteredData, "gewicht"));
-  updateChart(bandChart, parseData(filteredData, "bandgeschwindigkeit"));
-  updateChart(totalChart, parseData(filteredData, "total_weight"));
-  updateChart(runningChart, parseData(filteredData, "running_total"));
-  updateChart(korrekturChart, parseData(filteredData, "korrekturfaktor"));
-  updateChart(leistungChart, parseLeistung(filteredData));
+      if (range !== "all") {
+        const days = parseInt(range);
+        const cutoff = new Date();
+        cutoff.setDate(cutoff.getDate() - days);
+        filteredData = rawData.filter(e => new Date(e.timestamp.replace(" ", "T")) >= cutoff);
+      }
 
-  // Summen berechnen und anzeigen
-  const totalSum = calculateSum(filteredData, "total_weight").toFixed(2);
-  const runningSum = calculateSum(filteredData, "running_total").toFixed(2);
-  document.getElementById("totalSum").textContent = `Summe im Zeitraum: ${totalSum} t`;
-  document.getElementById("runningSum").textContent = `Summe im Zeitraum: ${runningSum} t`;
-}
+      updateChart(gewichtChart, parseData(filteredData, "gewicht"));
+      updateChart(bandChart, parseData(filteredData, "bandgeschwindigkeit"));
+      updateChart(totalChart, parseData(filteredData, "total_weight"));
+      updateChart(runningChart, parseData(filteredData, "running_total"));
+      updateChart(korrekturChart, parseData(filteredData, "korrekturfaktor"));
+      updateChart(leistungChart, parseLeistung(filteredData));
+
+      // Differenz anzeigen statt Summe
+      const totalDiff = calculateDifference(filteredData, "total_weight").toFixed(2);
+      const runningDiff = calculateDifference(filteredData, "running_total").toFixed(2);
+      document.getElementById("totalSum").textContent = `Zuwachs im Zeitraum: ${totalDiff} t`;
+      document.getElementById("runningSum").textContent = `Zuwachs im Zeitraum: ${runningDiff} t`;
+    }
 
     function updateChart(chart, data) {
       chart.data.datasets[0].data = data;
@@ -187,9 +203,6 @@ function updateCharts() {
 
     fetchData();
     setInterval(fetchData, 60000); // alle 60 Sekunden neu
-function calculateSum(data, field) {
-  return data.reduce((sum, e) => sum + (parseFloat(e[field]) || 0), 0);
-}
   </script>
 </body>
 </html>
