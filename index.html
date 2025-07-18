@@ -1,25 +1,32 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
   <title>IoT Waagen Dashboard</title>
+
+  <!-- 📦 PDF Export Bibliotheken -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+  <!-- Chart.js & Plugins -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
   <style>
     body {
       font-family: Arial, sans-serif;
       background: #f4f4f4;
       margin: 0;
     }
+
     header {
       background: #003366;
       color: white;
       padding: 10px;
       text-align: center;
     }
+
     .chart-container {
       background: white;
       border-radius: 10px;
@@ -28,19 +35,36 @@
       max-width: 1000px;
       box-shadow: 0 0 10px rgba(0,0,0,0.1);
     }
-    .filter {
+
+    .filter, .download-section {
       text-align: center;
-      margin: 10px;
+      margin: 20px auto;
     }
+
+    .download-section {
+      background: #e6f2ff;
+      padding: 20px;
+      border-radius: 8px;
+      max-width: 800px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.1);
+    }
+
+    .download-section select, .download-section button {
+      margin: 0 10px;
+      padding: 10px;
+      font-size: 16px;
+    }
+
+    .summary {
+      text-align: center;
+      margin-top: 10px;
+      font-weight: bold;
+    }
+
     #logo {
       height: 50px;
       vertical-align: middle;
       margin-right: 10px;
-    }
-    .sum-display {
-      text-align: center;
-      margin-top: 10px;
-      font-weight: bold;
     }
   </style>
 </head>
@@ -51,7 +75,7 @@
   </header>
 
   <div class="filter">
-    <label for="range">Zeitraum:</label>
+    <label for="range">Zeitraum anzeigen:</label>
     <select id="range">
       <option value="1">Letzter Tag</option>
       <option value="7">Letzte Woche</option>
@@ -61,41 +85,25 @@
     <button onclick="resetZoom()">Zoom zurücksetzen</button>
   </div>
 
-  <div class="chart-container">
-    <canvas id="gewichtChart"></canvas>
-    <div id="gewichtStats" class="sum-display"></div>
+  <!-- 📥 Downloadbereich -->
+  <div class="download-section">
+    <label for="downloadRange">PDF Zeitraum:</label>
+    <select id="downloadRange">
+      <option value="1">Letzter Tag</option>
+      <option value="7">Letzte Woche</option>
+      <option value="30">Letzter Monat</option>
+      <option value="all">Alle</option>
+    </select>
+    <button onclick="generatePDF()">PDF herunterladen</button>
+    <p id="lastExport" style="margin-top: 10px; color: #333;"></p>
   </div>
 
-  <div class="chart-container">
-    <canvas id="bandChart"></canvas>
-    <div id="bandStats" class="sum-display"></div>
-  </div>
-
-  <div class="chart-container">
-    <canvas id="totalChart"></canvas>
-    <div id="totalSum" class="sum-display"></div>
-  </div>
-
-  <div class="chart-container">
-    <canvas id="runningChart"></canvas>
-    <div id="runningSum" class="sum-display"></div>
-  </div>
-
-  <div class="chart-container">
-    <canvas id="korrekturChart"></canvas>
-    <div id="korrekturStats" class="sum-display"></div>
-  </div>
-
-  <div class="chart-container">
-    <canvas id="leistungChart"></canvas>
-    <div id="leistungStats" class="sum-display"></div>
-  </div>
-
-<div class="filter">
-  <button onclick="generatePDF()">📄 PDF herunterladen</button>
-  <div id="lastDownload" style="margin-top: 10px; font-style: italic;"></div>
-</div>
-
+  <div class="chart-container"><canvas id="gewichtChart"></canvas><div class="summary" id="gewichtSummary"></div></div>
+  <div class="chart-container"><canvas id="bandChart"></canvas><div class="summary" id="bandSummary"></div></div>
+  <div class="chart-container"><canvas id="totalChart"></canvas><div class="summary" id="totalSum"></div></div>
+  <div class="chart-container"><canvas id="runningChart"></canvas><div class="summary" id="runningSum"></div></div>
+  <div class="chart-container"><canvas id="korrekturChart"></canvas><div class="summary" id="korrekturSummary"></div></div>
+  <div class="chart-container"><canvas id="leistungChart"></canvas><div class="summary" id="leistungSummary"></div></div>
 
   <script>
     const apiUrl = "https://waage-api.onrender.com/data";
@@ -107,10 +115,17 @@
       updateCharts();
     }
 
+    function filterDataByRange(data, days) {
+      if (days === "all") return data;
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - parseInt(days));
+      return data.filter(e => new Date(e.timestamp.replace(" ", "T")) >= cutoff);
+    }
+
     function parseData(data, field) {
       return data.map(e => ({
         x: new Date(e.timestamp.replace(" ", "T")),
-        y: parseFloat(e[field])
+        y: e[field]
       }));
     }
 
@@ -127,99 +142,43 @@
       });
     }
 
-    function calculateDifference(data, field) {
-      const values = data.map(e => parseFloat(e[field])).filter(v => !isNaN(v));
-      if (values.length < 2) return 0;
-      return values[values.length - 1] - values[0];
-    }
-
-    function calculateStats(data, field) {
-      const values = data.map(e => parseFloat(e[field])).filter(v => !isNaN(v));
-      if (values.length === 0) return { min: 0, max: 0, avg: 0 };
-      const sum = values.reduce((a, b) => a + b, 0);
-      const min = Math.min(...values);
-      const max = Math.max(...values);
-      const avg = sum / values.length;
-      return {
-        min: min.toFixed(2),
-        max: max.toFixed(2),
-        avg: avg.toFixed(2)
-      };
-    }
-
     function updateCharts() {
       const range = document.getElementById("range").value;
-      let filteredData = rawData;
+      const filtered = filterDataByRange(rawData, range);
 
-      if (range !== "all") {
-        const days = parseInt(range);
-        const cutoff = new Date();
-        cutoff.setDate(cutoff.getDate() - days);
-        filteredData = rawData.filter(e => new Date(e.timestamp.replace(" ", "T")) >= cutoff);
-      }
+      updateChart(gewichtChart, parseData(filtered, "gewicht"), "gewichtSummary", "Gewicht", "kg");
+      updateChart(bandChart, parseData(filtered, "bandgeschwindigkeit"), "bandSummary", "Bandgeschwindigkeit", "m/s");
+      updateChart(totalChart, parseData(filtered, "total_weight"), null, "Tageszähler", "t");
+      updateChart(runningChart, parseData(filtered, "running_total"), null, "Running Total", "t");
+      updateChart(korrekturChart, parseData(filtered, "korrekturfaktor"), "korrekturSummary", "Korrekturfaktor", "");
+      updateChart(leistungChart, parseLeistung(filtered), "leistungSummary", "Förderleistung", "t/h");
 
-      // Daten vorbereiten
-      const gewichtData = parseData(filteredData, "gewicht");
-      const bandData = parseData(filteredData, "bandgeschwindigkeit");
-      const korrekturData = parseData(filteredData, "korrekturfaktor");
-      const leistungData = parseLeistung(filteredData);
-
-      updateChart(gewichtChart, gewichtData);
-      updateChart(bandChart, bandData);
-      updateChart(totalChart, parseData(filteredData, "total_weight"));
-      updateChart(runningChart, parseData(filteredData, "running_total"));
-      updateChart(korrekturChart, korrekturData);
-      updateChart(leistungChart, leistungData);
-
-      // Zählerdifferenz
-      const totalDiff = calculateDifference(filteredData, "total_weight").toFixed(2);
-      const runningDiff = calculateDifference(filteredData, "running_total").toFixed(2);
-      document.getElementById("totalSum").textContent = `Zuwachs im Zeitraum: ${totalDiff} t`;
-      document.getElementById("runningSum").textContent = `Zuwachs im Zeitraum: ${runningDiff} t`;
-
-      // Statistik anzeigen
-      const gewichtStats = calculateStats(filteredData, "gewicht");
-      const bandStats = calculateStats(filteredData, "bandgeschwindigkeit");
-      const korrekturStats = calculateStats(filteredData, "korrekturfaktor");
-      const leistungStats = calculateStats(leistungData.map(e => ({ leistung: e.y })), "leistung");
-
-      document.getElementById("gewichtStats").textContent =
-        `Min: ${gewichtStats.min} kg | Max: ${gewichtStats.max} kg | Ø: ${gewichtStats.avg} kg`;
-
-      document.getElementById("bandStats").textContent =
-        `Min: ${bandStats.min} m/s | Max: ${bandStats.max} m/s | Ø: ${bandStats.avg} m/s`;
-
-      document.getElementById("korrekturStats").textContent =
-        `Min: ${korrekturStats.min} | Max: ${korrekturStats.max} | Ø: ${korrekturStats.avg}`;
-
-      document.getElementById("leistungStats").textContent =
-        `Min: ${leistungStats.min} t/h | Max: ${leistungStats.max} t/h | Ø: ${leistungStats.avg} t/h`;
+      document.getElementById("totalSum").textContent = `Summe: ${(calculateDiff(filtered, "total_weight")).toFixed(2)} t`;
+      document.getElementById("runningSum").textContent = `Summe: ${(calculateDiff(filtered, "running_total")).toFixed(2)} t`;
     }
 
-    function updateChart(chart, data) {
+    function updateChart(chart, data, summaryId, label, unit) {
       chart.data.datasets[0].data = data;
       chart.update();
+
+      if (summaryId && data.length > 0) {
+        const values = data.map(p => p.y);
+        const avg = values.reduce((a,b) => a+b) / values.length;
+        const min = Math.min(...values);
+        const max = Math.max(...values);
+        document.getElementById(summaryId).textContent =
+          `Min: ${min.toFixed(2)} ${unit} | Max: ${max.toFixed(2)} ${unit} | Ø: ${avg.toFixed(2)} ${unit}`;
+      }
     }
 
     function createChart(canvasId, label, color) {
       const ctx = document.getElementById(canvasId).getContext("2d");
       return new Chart(ctx, {
         type: "line",
-        data: {
-          datasets: [{
-            label: label,
-            borderColor: color,
-            borderWidth: 2,
-            fill: false,
-            data: []
-          }]
-        },
+        data: { datasets: [{ label, borderColor: color, borderWidth: 2, fill: false, data: [] }] },
         options: {
           responsive: true,
-          interaction: {
-            mode: 'index',
-            intersect: false,
-          },
+          interaction: { mode: 'index', intersect: false },
           plugins: {
             zoom: {
               pan: { enabled: true, mode: 'x' },
@@ -249,6 +208,53 @@
       [gewichtChart, bandChart, totalChart, runningChart, korrekturChart, leistungChart].forEach(chart => chart.resetZoom());
     }
 
+    function calculateDiff(data, field) {
+      if (data.length < 2) return 0;
+      return data[data.length - 1][field] - data[0][field];
+    }
+
+    // 📥 PDF-Export
+    async function generatePDF() {
+      const days = document.getElementById("downloadRange").value;
+      const filtered = filterDataByRange(rawData, days);
+
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+
+      doc.setFontSize(14);
+      doc.text("IoT Waagen PDF Report", 10, 10);
+      doc.setFontSize(10);
+      doc.text(`Zeitraum: ${days === "all" ? "Alle Daten" : `Letzte ${days} Tage`}`, 10, 18);
+      doc.text(`Erstellt am: ${new Date().toLocaleString("de-DE")}`, 10, 24);
+
+      let y = 32;
+      const metrics = [
+        { label: "Gewicht", unit: "kg", data: filtered.map(e => parseFloat(e.gewicht || 0)) },
+        { label: "Bandgeschwindigkeit", unit: "m/s", data: filtered.map(e => parseFloat(e.bandgeschwindigkeit || 0)) },
+        { label: "Korrekturfaktor", unit: "", data: filtered.map(e => parseFloat(e.korrekturfaktor || 0)) },
+        { label: "Förderleistung", unit: "t/h", data: parseLeistung(filtered).map(e => e.y) },
+        { label: "Tageszähler", unit: "t", value: calculateDiff(filtered, "total_weight") },
+        { label: "Running Total", unit: "t", value: calculateDiff(filtered, "running_total") }
+      ];
+
+      metrics.forEach(m => {
+        if (m.data) {
+          const avg = m.data.reduce((a,b)=>a+b,0) / m.data.length;
+          const min = Math.min(...m.data);
+          const max = Math.max(...m.data);
+          doc.text(`${m.label} (Ø: ${avg.toFixed(2)} ${m.unit}, Min: ${min.toFixed(2)}, Max: ${max.toFixed(2)})`, 10, y);
+        } else {
+          doc.text(`${m.label} (Δ: ${m.value.toFixed(2)} ${m.unit})`, 10, y);
+        }
+        y += 8;
+      });
+
+      doc.save(`waagen-report-${Date.now()}.pdf`);
+
+      document.getElementById("lastExport").textContent = `Letzter Download: ${new Date().toLocaleString("de-DE")}`;
+    }
+
+    // 🎯 Initialisierung
     const gewichtChart = createChart("gewichtChart", "Gewicht (kg)", "#0074D9");
     const bandChart = createChart("bandChart", "Bandgeschwindigkeit (m/s)", "#2ECC40");
     const totalChart = createChart("totalChart", "Tageszähler (t)", "#FF851B");
@@ -260,67 +266,6 @@
 
     fetchData();
     setInterval(fetchData, 60000);
-
-async function generatePDF() {
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF();
-
-  // Aktueller Zeitraum
-  const rangeText = document.getElementById("range").selectedOptions[0].text;
-
-  // Aktuelles Datum
-  const now = new Date();
-  const timestamp = now.toLocaleString("de-DE");
-
-  // Titel
-  doc.setFontSize(14);
-  doc.text(`IoT Waagen Dashboard – Zeitraum: ${rangeText}`, 10, 10);
-  doc.setFontSize(10);
-  doc.text(`Erstellt am: ${timestamp}`, 10, 16);
-
-  let yOffset = 25;
-
-  // Statistiken einfügen
-  const stats = [
-    document.getElementById("gewichtStats").textContent,
-    document.getElementById("bandStats").textContent,
-    document.getElementById("korrekturStats").textContent,
-    document.getElementById("leistungStats").textContent,
-    document.getElementById("totalSum").textContent,
-    document.getElementById("runningSum").textContent
-  ];
-
-  stats.forEach((line, i) => {
-    doc.text(line, 10, yOffset);
-    yOffset += 7;
-  });
-
-  yOffset += 5;
-
-  // Charts als Bilder hinzufügen
-  const chartIds = [
-    "gewichtChart", "bandChart", "totalChart",
-    "runningChart", "korrekturChart", "leistungChart"
-  ];
-
-  for (const id of chartIds) {
-    const canvas = document.getElementById(id);
-    const imageData = await html2canvas(canvas).then(canvas => canvas.toDataURL("image/png"));
-    doc.addImage(imageData, "PNG", 10, yOffset, 180, 70);
-    yOffset += 75;
-
-    // Neue Seite, falls nötig
-    if (yOffset > 250) {
-      doc.addPage();
-      yOffset = 20;
-    }
-  }
-
-  doc.save(`waagen-report_${now.toISOString().slice(0, 10)}.pdf`);
-  document.getElementById("lastDownload").textContent = `Letzter Export: ${timestamp}`;
-}
-
-
   </script>
 </body>
 </html>
