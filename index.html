@@ -97,25 +97,31 @@
         };
       });
     }
-    function updateCharts() {
-      const range = document.getElementById("range").value;
-      let filteredData = rawData;
 
-      if (range !== "all") {
-        const days = parseInt(range);
-        const cutoff = new Date();
-        cutoff.setDate(cutoff.getDate() - days);
-        filteredData = rawData.filter(e => new Date(e.timestamp.replace(" ", "T")) >= cutoff);
-      }
+function updateCharts() {
+  const range = document.getElementById("range").value;
+  let filteredData = rawData;
 
-      updateChart(gewichtChart, parseData(filteredData, "gewicht"));
-      updateChart(bandChart, parseData(filteredData, "bandgeschwindigkeit"));
-      updateChart(totalChart, parseData(filteredData, "total_weight"));
-      updateChart(runningChart, parseData(filteredData, "running_total"));
-      updateChart(korrekturChart, parseData(filteredData, "korrekturfaktor"));
-      updateChart(leistungChart, parseLeistung(filteredData));
-    }
+  if (range !== "all") {
+    const days = parseInt(range);
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - days);
+    filteredData = rawData.filter(e => new Date(e.timestamp.replace(" ", "T")) >= cutoff);
+  }
 
+  updateChart(gewichtChart, parseData(filteredData, "gewicht"));
+  updateChart(bandChart, parseData(filteredData, "bandgeschwindigkeit"));
+  updateChart(totalChart, parseData(filteredData, "total_weight"));
+  updateChart(runningChart, parseData(filteredData, "running_total"));
+  updateChart(korrekturChart, parseData(filteredData, "korrekturfaktor"));
+  updateChart(leistungChart, parseLeistung(filteredData));
+
+  // Summen berechnen und anzeigen
+  const totalSum = calculateSum(filteredData, "total_weight").toFixed(2);
+  const runningSum = calculateSum(filteredData, "running_total").toFixed(2);
+  document.getElementById("totalSum").textContent = `Summe im Zeitraum: ${totalSum} t`;
+  document.getElementById("runningSum").textContent = `Summe im Zeitraum: ${runningSum} t`;
+}
 
     function updateChart(chart, data) {
       chart.data.datasets[0].data = data;
@@ -160,12 +166,6 @@
             y: {
               beginAtZero: false,
               title: { display: true, text: label }
-		ticks: {
- 	 	callback: function(value) {
-   		return value.toFixed(2);
- 		 }
-		}
-
             }
           }
         }
