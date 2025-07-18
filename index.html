@@ -97,7 +97,6 @@
         };
       });
     }
-
 function updateCharts() {
   const range = document.getElementById("range").value;
   let filteredData = rawData;
@@ -116,11 +115,22 @@ function updateCharts() {
   updateChart(korrekturChart, parseData(filteredData, "korrekturfaktor"));
   updateChart(leistungChart, parseLeistung(filteredData));
 
-  // Summen berechnen und anzeigen
-  const totalSum = calculateSum(filteredData, "total_weight").toFixed(2);
-  const runningSum = calculateSum(filteredData, "running_total").toFixed(2);
-  document.getElementById("totalSum").textContent = `Summe im Zeitraum: ${totalSum} t`;
-  document.getElementById("runningSum").textContent = `Summe im Zeitraum: ${runningSum} t`;
+  // Differenzberechnung für Zählerwerte:
+  const first = filteredData[0];
+  const last = filteredData[filteredData.length - 1];
+
+  if (first && last) {
+    const diffTotal = (last.total_weight || 0) - (first.total_weight || 0);
+    const diffRunning = (last.running_total || 0) - (first.running_total || 0);
+
+    document.getElementById("totalSum").innerText = `Differenz: ${diffTotal.toFixed(2)} t`;
+    document.getElementById("runningSum").innerText = `Differenz: ${diffRunning.toFixed(2)} t`;
+  } else {
+    document.getElementById("totalSum").innerText = "Keine Daten";
+    document.getElementById("runningSum").innerText = "Keine Daten";
+  }
+}
+
 }
 
     function updateChart(chart, data) {
@@ -166,6 +176,12 @@ function updateCharts() {
             y: {
               beginAtZero: false,
               title: { display: true, text: label }
+		ticks: {
+ 	 	callback: function(value) {
+   		return value.toFixed(2);
+ 		 }
+		}
+
             }
           }
         }
