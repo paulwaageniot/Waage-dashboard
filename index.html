@@ -6,6 +6,8 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -88,6 +90,12 @@
     <canvas id="leistungChart"></canvas>
     <div id="leistungStats" class="sum-display"></div>
   </div>
+
+<div class="filter">
+  <button onclick="generatePDF()">📄 PDF herunterladen</button>
+  <div id="lastDownload" style="margin-top: 10px; font-style: italic;"></div>
+</div>
+
 
   <script>
     const apiUrl = "https://waage-api.onrender.com/data";
@@ -252,6 +260,67 @@
 
     fetchData();
     setInterval(fetchData, 60000);
+
+async function generatePDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  // Aktueller Zeitraum
+  const rangeText = document.getElementById("range").selectedOptions[0].text;
+
+  // Aktuelles Datum
+  const now = new Date();
+  const timestamp = now.toLocaleString("de-DE");
+
+  // Titel
+  doc.setFontSize(14);
+  doc.text(`IoT Waagen Dashboard – Zeitraum: ${rangeText}`, 10, 10);
+  doc.setFontSize(10);
+  doc.text(`Erstellt am: ${timestamp}`, 10, 16);
+
+  let yOffset = 25;
+
+  // Statistiken einfügen
+  const stats = [
+    document.getElementById("gewichtStats").textContent,
+    document.getElementById("bandStats").textContent,
+    document.getElementById("korrekturStats").textContent,
+    document.getElementById("leistungStats").textContent,
+    document.getElementById("totalSum").textContent,
+    document.getElementById("runningSum").textContent
+  ];
+
+  stats.forEach((line, i) => {
+    doc.text(line, 10, yOffset);
+    yOffset += 7;
+  });
+
+  yOffset += 5;
+
+  // Charts als Bilder hinzufügen
+  const chartIds = [
+    "gewichtChart", "bandChart", "totalChart",
+    "runningChart", "korrekturChart", "leistungChart"
+  ];
+
+  for (const id of chartIds) {
+    const canvas = document.getElementById(id);
+    const imageData = await html2canvas(canvas).then(canvas => canvas.toDataURL("image/png"));
+    doc.addImage(imageData, "PNG", 10, yOffset, 180, 70);
+    yOffset += 75;
+
+    // Neue Seite, falls nötig
+    if (yOffset > 250) {
+      doc.addPage();
+      yOffset = 20;
+    }
+  }
+
+  doc.save(`waagen-report_${now.toISOString().slice(0, 10)}.pdf`);
+  document.getElementById("lastDownload").textContent = `Letzter Export: ${timestamp}`;
+}
+
+
   </script>
 </body>
 </html>
