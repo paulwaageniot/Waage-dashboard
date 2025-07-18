@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <title>IoT Waagen Dashboard</title>
 
-  <!-- 📦 PDF Export Bibliotheken -->
+  <!-- PDF & Screenshot Libs -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
@@ -85,7 +85,6 @@
     <button onclick="resetZoom()">Zoom zurücksetzen</button>
   </div>
 
-  <!-- 📥 Downloadbereich -->
   <div class="download-section">
     <label for="downloadRange">PDF Zeitraum:</label>
     <select id="downloadRange">
@@ -98,6 +97,7 @@
     <p id="lastExport" style="margin-top: 10px; color: #333;"></p>
   </div>
 
+  <!-- CHARTS -->
   <div class="chart-container"><canvas id="gewichtChart"></canvas><div class="summary" id="gewichtSummary"></div></div>
   <div class="chart-container"><canvas id="bandChart"></canvas><div class="summary" id="bandSummary"></div></div>
   <div class="chart-container"><canvas id="totalChart"></canvas><div class="summary" id="totalSum"></div></div>
@@ -213,7 +213,7 @@
       return data[data.length - 1][field] - data[0][field];
     }
 
-    // 📥 PDF-Export
+    // 🧾 PDF GENERIERUNG MIT GRAFIKEN
     async function generatePDF() {
       const days = document.getElementById("downloadRange").value;
       const filtered = filterDataByRange(rawData, days);
@@ -249,12 +249,25 @@
         y += 8;
       });
 
-      doc.save(`waagen-report-${Date.now()}.pdf`);
+      y += 4;
 
+      // 📸 Screenshots aller Diagramme (Canvas)
+      const charts = ["gewichtChart", "bandChart", "totalChart", "runningChart", "korrekturChart", "leistungChart"];
+
+      for (let id of charts) {
+        const canvas = document.getElementById(id);
+        const imgData = await html2canvas(canvas).then(canvasEl => canvasEl.toDataURL("image/png"));
+        doc.addPage();
+        doc.setFontSize(12);
+        doc.text(id.replace("Chart", ""), 10, 15);
+        doc.addImage(imgData, "PNG", 10, 20, 180, 90); // passt automatisch auf Seite
+      }
+
+      doc.save(`waagen-report-${Date.now()}.pdf`);
       document.getElementById("lastExport").textContent = `Letzter Download: ${new Date().toLocaleString("de-DE")}`;
     }
 
-    // 🎯 Initialisierung
+    // Init
     const gewichtChart = createChart("gewichtChart", "Gewicht (kg)", "#0074D9");
     const bandChart = createChart("bandChart", "Bandgeschwindigkeit (m/s)", "#2ECC40");
     const totalChart = createChart("totalChart", "Tageszähler (t)", "#FF851B");
