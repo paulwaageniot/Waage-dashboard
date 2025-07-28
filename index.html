@@ -105,14 +105,6 @@
   <button onclick="saveEmailSettings()">Speichern</button>
   <p id="emailStatus"></p>
 <button onclick="sendNow()">Jetzt senden</button>
-<script>
-  async function sendNow() {
-    const res = await fetch("https://waage-api.onrender.com/send-now", {
-      method: "POST"
-    });
-    const text = await res.text();
-    alert(text); // optional
-  }
 
 
 </div>
@@ -128,6 +120,14 @@
     <p id="lastExport" style="margin-top: 10px; color: #333;"></p>
   </div>
 <script>
+  async function sendNow() {
+    const res = await fetch("https://waage-api.onrender.com/send-now", {
+      method: "POST"
+    });
+    const text = await res.text();
+    alert(text); // optional
+  }
+
   async function saveEmailSettings() {
     const email = document.getElementById("emailInput").value;
     const interval = document.getElementById("intervalSelect").value;
