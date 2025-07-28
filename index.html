@@ -85,18 +85,6 @@
     <button onclick="resetZoom()">Zoom zurücksetzen</button>
   </div>
 
-  <div class="download-section">
-    <label for="downloadRange">PDF Zeitraum:</label>
-    <select id="downloadRange">
-      <option value="1">Letzter Tag</option>
-      <option value="7">Letzte Woche</option>
-      <option value="30">Letzter Monat</option>
-      <option value="all">Alle</option>
-    </select>
-    <button onclick="generatePDF()">PDF herunterladen</button>
-    <p id="lastExport" style="margin-top: 10px; color: #333;"></p>
-  </div>
-
   <!-- CHARTS -->
   <div class="chart-container"><canvas id="gewichtChart"></canvas><div class="summary" id="gewichtSummary"></div></div>
   <div class="chart-container"><canvas id="bandChart"></canvas><div class="summary" id="bandSummary"></div></div>
@@ -117,7 +105,17 @@
   <button onclick="saveEmailSettings()">Speichern</button>
   <p id="emailStatus"></p>
 </div>
-
+ <div class="download-section">
+    <label for="downloadRange">PDF Zeitraum:</label>
+    <select id="downloadRange">
+      <option value="1">Letzter Tag</option>
+      <option value="7">Letzte Woche</option>
+      <option value="30">Letzter Monat</option>
+      <option value="all">Alle</option>
+    </select>
+    <button onclick="generatePDF()">PDF herunterladen</button>
+    <p id="lastExport" style="margin-top: 10px; color: #333;"></p>
+  </div>
 <script>
   async function saveEmailSettings() {
     const email = document.getElementById("emailInput").value;
