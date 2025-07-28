@@ -104,8 +104,32 @@
   <div class="chart-container"><canvas id="runningChart"></canvas><div class="summary" id="runningSum"></div></div>
   <div class="chart-container"><canvas id="korrekturChart"></canvas><div class="summary" id="korrekturSummary"></div></div>
   <div class="chart-container"><canvas id="leistungChart"></canvas><div class="summary" id="leistungSummary"></div></div>
+ <div class="chart-container">
+  <h2>📧 Automatischer E-Mail-Report</h2>
+  <label for="emailInput">E-Mail-Adresse:</label>
+  <input type="email" id="emailInput" placeholder="z. B. name@example.com" />
+  <label for="intervalSelect">Intervall:</label>
+  <select id="intervalSelect">
+    <option value="daily">Täglich</option>
+    <option value="weekly">Wöchentlich</option>
+    <option value="monthly">Monatlich</option>
+  </select>
+  <button onclick="saveEmailSettings()">Speichern</button>
+  <p id="emailStatus"></p>
+</div>
 
-  <script>
+<script>
+  async function saveEmailSettings() {
+    const email = document.getElementById("emailInput").value;
+    const interval = document.getElementById("intervalSelect").value;
+    const res = await fetch("https://waage-api.onrender.com/email-settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, interval }),
+    });
+    const text = await res.text();
+    document.getElementById("emailStatus").textContent = text;
+  }
     const apiUrl = "https://waage-api.onrender.com/data";
     let rawData = [];
 
