@@ -104,6 +104,17 @@
   </select>
   <button onclick="saveEmailSettings()">Speichern</button>
   <p id="emailStatus"></p>
+<button onclick="sendNow()">Jetzt senden</button>
+<script>
+  async function sendNow() {
+    const res = await fetch("https://waage-api.onrender.com/send-now", {
+      method: "POST"
+    });
+    const text = await res.text();
+    alert(text); // optional
+  }
+
+
 </div>
  <div class="download-section">
     <label for="downloadRange">PDF Zeitraum:</label>
