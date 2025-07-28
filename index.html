@@ -308,8 +308,20 @@
     const korrekturChart = createChart("korrekturChart", "Korrekturfaktor", "#FF4136");
     const leistungChart = createChart("leistungChart", "Förderleistung (t/h)", "#111111");
 
-    document.getElementById("range").addEventListener("change", updateCharts);
+ const rangeSelect = document.getElementById("range");
+const downloadSelect = document.getElementById("downloadRange");
 
+// Wenn Zeitraum geändert wird → PDF-Zeitraum mitziehen
+rangeSelect.addEventListener("change", () => {
+  downloadSelect.value = rangeSelect.value;
+  updateCharts();
+});
+
+// Wenn PDF-Zeitraum geändert wird → Zeitraum oben mitziehen
+downloadSelect.addEventListener("change", () => {
+  rangeSelect.value = downloadSelect.value;
+  updateCharts();
+});
     fetchData();
     setInterval(fetchData, 60000);
   </script>
