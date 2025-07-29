@@ -104,8 +104,13 @@
   </select>
   <button onclick="saveEmailSettings()">Speichern</button>
   <p id="emailStatus"></p>
+<label for="sendRange">Zeitraum für PDF:</label>
+<select id="sendRange">
+  <option value="1">Letzter Tag</option>
+  <option value="7">Letzte Woche</option>
+  <option value="30">Letzter Monat</option>
+</select>
 <button onclick="sendNow()">Jetzt senden</button>
-
 
 </div>
  <div class="download-section">
@@ -120,14 +125,18 @@
     <p id="lastExport" style="margin-top: 10px; color: #333;"></p>
   </div>
 <script>
-  async function sendNow() {
-    const res = await fetch("https://waage-api.onrender.com/send-now", {
-      method: "POST"
-    });
-    const text = await res.text();
-    alert(text); // optional
-  }
+async function sendNow() {
+  const days = document.getElementById("sendRange").value;
 
+  const res = await fetch("https://waage-api.onrender.com/send-now", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ days }),
+  });
+
+  const text = await res.text();
+  alert(text);
+}
   async function saveEmailSettings() {
     const email = document.getElementById("emailInput").value;
     const interval = document.getElementById("intervalSelect").value;
