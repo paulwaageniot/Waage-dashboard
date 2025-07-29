@@ -84,22 +84,6 @@
     </select>
     <button onclick="resetZoom()">Zoom zurücksetzen</button>
   </div>
-
- <div class="chart-container">
-  <h2>⚙️ Grenzwerte einstellen</h2>
-  <label>Max. Gewicht (kg):</label>
- <input type="number" id="maxGewicht" value="100" step="1" /div>
-
-  <label>Max. Bandgeschwindigkeit (m/s):</label>
-  <input type="number" id="maxBand" value="2" step="0.1" /div>
-
-  <label>Max. Förderleistung (t/h):</label>
-  <input type="number" id="maxLeistung" value="600" step="1" /div>
-
-  <label><input type="checkbox" id="watchKorrektur" checked /> Bei Änderung des Korrekturfaktors benachrichtigen</label>
-
-  <button onclick="saveThresholds()">Grenzwerte speichern</button>
-  <p id="thresholdStatus"></p>
 </div>
   <!-- CHARTS -->
   <div class="chart-container"><canvas id="gewichtChart"></canvas><div class="summary" id="gewichtSummary"></div></div>
@@ -140,6 +124,22 @@
     <button onclick="generatePDF()">PDF herunterladen</button>
     <p id="lastExport" style="margin-top: 10px; color: #333;"></p>
   </div>
+ <div class="chart-container">
+  <h2>⚙️ Grenzwerte einstellen</h2>
+  <label>Max. Gewicht (kg):</label>
+ <input type="number" id="maxGewicht" value="100" step="1" /div>
+
+  <label>Max. Bandgeschwindigkeit (m/s):</label>
+  <input type="number" id="maxBand" value="2" step="0.1" /div>
+
+  <label>Max. Förderleistung (t/h):</label>
+  <input type="number" id="maxLeistung" value="600" step="1" /div>
+
+  <label><input type="checkbox" id="watchKorrektur" checked /> Bei Änderung des Korrekturfaktors benachrichtigen</label>
+
+  <button onclick="saveThresholds()">Grenzwerte speichern</button>
+  <p id="thresholdStatus"></p>
+</div>
 <script>
 
   async function saveThresholds() {
